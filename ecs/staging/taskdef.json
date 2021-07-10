@@ -1,0 +1,37 @@
+{
+    "family": "testing_project",
+    "networkMode": "awsvpc",
+    "executionRoleArn": "changearn/ecs_tasks_icode_prod_1",
+    "cpu": "1024",
+    "memory": "2048",
+    "requiresCompatibilities": [
+        "FARGATE"
+    ],
+    "containerDefinitions": [
+        {
+            "name": "testing_project_web",
+            "image": "<IMAGE1_NAME>",
+            "essential": true,
+            "command": ["bundle", "exec", "rails", "server", "-b", "0.0.0.0", "-p", "80"],
+            "portMappings": [
+                {
+                    "protocol": "tcp",
+                    "containerPort": 80,
+                    "hostPort": 80
+                }
+            ],
+            "environment": [ todo
+            ],
+            "secrets": [
+            ],
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "testing_project",
+                    "awslogs-region": "ap-northeast-1",
+                    "awslogs-stream-prefix": ""
+                }
+            }
+        }
+    ]
+}

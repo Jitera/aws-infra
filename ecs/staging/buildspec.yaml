@@ -1,0 +1,44 @@
+version: 0.2
+env:
+  variables:
+    IMAGE_NAME: "testing_project_web"
+  parameter-store:
+    docker_username: "/testing_project/docker_username"
+    docker_password: "/testing_project/docker_password"
+    subnet: "/testing_project/subnet"
+    security_group: "/testing_project/security_group"
+
+phases:
+  install:
+    runtime-versions:
+      docker: 18
+  pre_build:
+    commands:
+      - echo --- Logging in to Amazon ECR ---
+      - $(aws ecr get-login --no-include-email --region ${AWS_DEFAULT_REGION})
+      - echo --- Setting AWS environments ---
+      - echo --- Docker Login ---
+      - echo $docker_password | docker login --username $docker_username --password-stdin
+      - AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
+      - URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${IMAGE_NAME}
+  build:
+    commands:
+      - echo --- Building container ---
+      - docker build -f ./docker/production/Dockerfile -t $URI:latest .
+      - docker push $URI:latest
+      - echo --- Migrating database ---
+      - echo --- Migrating database ECS task ---
+      - |
+        aws ecs run-task --cluster testing_project --task-definition testing_project_db_setup --count 1 --launch-type FARGATE --network-configuration "awsvpcConfiguration={subnets=[${subnet}],securityGroups=[${security_group}], assignPublicIp=ENABLED}"
+      - printf '{"Version":"1.0","ImageURI":"%s"}' $URI:latest > imageDetail.json
+      - echo ----Update Sidekiq/SSH Force Deploy with new image ---
+      - aws ecs update-service --cluster "testing_project" --service "testing_project_ssh_service"  --task-definition "testing_project_ssh"  --force-new-deployment
+      - aws ecs update-service --cluster "testing_project" --service "testing_project_sidekiq"  --task-definition "testing_project_sidekiq"  --force-new-deployment
+      - echo ----End Sidekiq/SSH Force Deploy with new image ---
+
+artifacts:
+  files:
+    - imageDetail.json
+    - ecs/production/taskdef.json
+    - ecs/production/console_task.json
+    - ecs/production/appspec.yaml
