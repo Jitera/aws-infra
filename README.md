@@ -1,4 +1,11 @@
 # AWS Infrastructure
+This is for setting up automated pipeline for continous delivery of Ruby on Rails Application, but can be used even for other Frameworks/Languagges 
+with little modificiations
+
+1. ECS
+2. ElasticCache
+3. Mysql RDS
+4. Codebuild/CodePipeline
 
 ### config
 
